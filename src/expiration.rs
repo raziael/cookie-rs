@@ -126,11 +126,24 @@ impl Expiration {
     }
 }
 
-impl<T: Into<Option<OffsetDateTime>>> From<T> for Expiration {
-    fn from(option: T) -> Self {
-        match option.into() {
-            Some(value) => Expiration::DateTime(value),
-            None => Expiration::Session
+// NOTE: the original `impl<T: Into<Option<OffsetDateTime>>> From<T> for Expiration`
+// triggers a coherence error under Rust 1.80+ stricter orphan rules due to a
+// hypothetical conflict with `time`'s internal `From<HourBase> for ...::Type`.
+// Replaced with two specific impls that cover every call site cookie itself
+// uses (`OffsetDateTime`, `Option<OffsetDateTime>`, and `None`-by-inference).
+// — raziael/cookie-rs fork patch for mira
+
+impl From<OffsetDateTime> for Expiration {
+    fn from(value: OffsetDateTime) -> Self {
+        Expiration::DateTime(value)
+    }
+}
+
+impl From<Option<OffsetDateTime>> for Expiration {
+    fn from(value: Option<OffsetDateTime>) -> Self {
+        match value {
+            Some(dt) => Expiration::DateTime(dt),
+            None => Expiration::Session,
         }
     }
 }
